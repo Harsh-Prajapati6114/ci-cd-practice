@@ -4,17 +4,17 @@ on:
   push:
     branches:
     - main  
-  job:
-    build:  
+jobs:
+  build:  
 
-  runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-  steps:
-    - name: Checkout
-      uses: actions/checkout@v1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
 
-    - name: print message
-      run: echo "Deploying to AWS S3 bucket"
+      - name: print message
+        run: echo "Deploying to AWS S3 bucket"
 
-    - name: list files
-      run: ls -la
+      - name: list files
+        run: ls -la
