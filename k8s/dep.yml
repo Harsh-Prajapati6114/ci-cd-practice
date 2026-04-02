@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: 2048-game
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      apptype: backend
+      environment: qa
+  template:
+    metadata:
+      labels:
+        apptype: backend
+        environment: qa
+    spec:
+      containers:
+      - name: nginx
+        image: harsh6/portfolio:v2
+        ports:
+        - containerPort: 80

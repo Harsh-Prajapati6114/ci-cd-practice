@@ -1,23 +1,65 @@
-# name: Portfolio Deployment
+# name: deploy-portfolio
 
 # on:
 #   push:
 #     branches:
-#     - main
-
+#     - main  
 # jobs:
-#   build-and-deploy:
+#   build:  
+
 #     runs-on: ubuntu-latest
+
 #     steps:
-#     - name: Checkout
-#       uses: actions/checkout@v1
 
-#     - name: Configure AWS Credentials
-#       uses: aws-actions/configure-aws-credentials@v1
-#       with:
-#         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#         aws-region: us-east-1
+#       - name: Checkout
+#         uses: actions/checkout@v1
 
-#     - name: Deploy static site to S3 bucket
-#       run: aws s3 sync . s3://tws-junoon --delete
+#       - name : Login to docker hub
+#         uses: docker/login-action@v2
+#         with:
+#           username: ${{ secrets.DOCKER_USERNAME }}
+#           password: ${{ secrets.DOCKER_PASSWORD }}
+      
+#       - name: Build docker image
+#         run: docker build -t ${{ secrets.DOCKER_USERNAME }}/portfolio:latest .
+
+
+#       - name : push docker image to docker hub
+#         run: docker push ${{ secrets.DOCKER_USERNAME }}/portfolio:latest
+      
+#       - name: Set up Kubeconfig
+#         run: |
+#           mkdir -p $HOME/.kube
+#           echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+
+#       - name: Deploy to Kubernetes
+#         run: |
+#           kubectl apply -f k8s/2048-namespace.yaml
+#           kubectl apply -f k8s/2048-deployment.yaml
+#           kubectl apply -f k8s/2048-service.yaml
+#           kubectl apply -f k8s/dep.yml
+#           kubectl apply -f k8s/ser.yml
+#           kubectl apply -f k8s/2048-ingress.yml
+
+
+
+# -------------------------------------------------------------------------------------------------
+      # - name: Deploy to ec2
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ secrets.EC2_HOST }}
+      #     username: ${{ secrets.EC2_USER }}
+      #     key: ${{ secrets.EC2_SSH_KEY }}
+      #     script: |
+      #       docker pull ${{ secrets.DOCKER_USERNAME }}/portfolio:latest
+      #       docker stop portfolio || true
+      #       docker rm portfolio || true
+      #       docker run -d -p 80:80 --name portfolio ${{ secrets.DOCKER_USERNAME }}/portfolio:latest
+      # - name: Configure AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@v1
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: ap-south-1
+      # - name: Deploy static site to S3 bucket
+      #   run: aws s3 sync . s3://harsh-portfolio-6/ 

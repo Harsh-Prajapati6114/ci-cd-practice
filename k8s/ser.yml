@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: harsh-nodeport-service
+  namespace: 2048-game
+spec:
+  type: NodePort
+  selector:
+    apptype: backend
+    environment: qa
+  ports:
+    - port: 80
+      targetPort: 80
