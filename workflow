@@ -27,10 +27,22 @@
 #       - name : push docker image to docker hub
 #         run: docker push ${{ secrets.DOCKER_USERNAME }}/portfolio:latest
       
-#       - name: Set up Kubeconfig
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v1
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ap-south-1
+
+#       - name: Install kubectl
+#         uses: azure/setup-kubectl@v3
+
+#       - name: Update kubeconfig
 #         run: |
-#           mkdir -p $HOME/.kube
-#           echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+#           aws eks update-kubeconfig --region ap-south-1 --name my-eks-cluster-dt
+
+#       - name: Test connection
+#         run: kubectl get nodes
 
 #       - name: Deploy to Kubernetes
 #         run: |

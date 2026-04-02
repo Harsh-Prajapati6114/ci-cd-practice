@@ -1,25 +1,3 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: "2048-deployment"
-  namespace: "2048-game"
-spec:
-  selector:
-    matchLabels:
-      app: "2048"
-  replicas: 5
-  template:
-    metadata:
-      labels:
-        app: "2048"
-    spec:
-      containers:
-      - image: harsh6/node-app:v1
-        imagePullPolicy: Always
-        name: "2048"
-        ports:
-        - containerPort: 80
-root@jenkins:~# cat 2048-ingress.yml 
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
