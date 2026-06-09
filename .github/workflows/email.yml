@@ -29,3 +29,61 @@ jobs:
 
       - name : push docker image to docker hub
         run: docker push ${{ secrets.DOCKER_USERNAME }}/portfolio:latest
+
+  send-email-notification:
+    name: Notify Stakeholders via Email
+    runs-on: ubuntu-latest
+    needs: build
+    # Ensures this job only triggers if the 'deploy' job completes successfully
+    if: success() 
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to fetch git log details
+
+      - name: Extract Commit and Merge Details
+        id: vars
+        run: |
+          # Capture the latest commit message (which contains the merge PR details)
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          
+          # Clean text formatting for the multi-line env variable string
+          echo "MERGE_DETAILS<<EOF" >> $GITHUB_ENV
+          echo "$COMMIT_MSG" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Send Email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          # SMTP Server Configuration (Example uses Gmail)
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          
+          # Email Metadata
+          subject: "🚀 Deployment Success: ${{ github.repository }} successfully updated!"
+          to: team-leads@example.com, stakeholder@example.com
+          from: GitHub Actions CI/CD <${{ secrets.SMTP_USERNAME }}>
+          
+          # Email Contents (Markdown to HTML format conversion)
+          html_body: |
+            <h2>Deployment Action Completed Successfully!</h2>
+            <p>The continuous deployment pipeline has successfully finished running.</p>
+            
+            <h3>📦 What Was Deployed:</h3>
+            <ul>
+              <li><strong>Repository:</strong> ${{ github.repository }}</li>
+              <li><strong>Branch/Ref:</strong> <code>${{ github.ref_name }}</code></li>
+              <li><strong>Target Environment:</strong> Production</li>
+              <li><strong>Triggered By:</strong> ${{ github.actor }}</li>
+            </ul>
+            
+            <h3>🔀 What Was Merged (Latest Commit Info):</h3>
+            <pre>${{ env.MERGE_DETAILS }}</pre>
+            
+            <br>
+            <p>👉 View the complete workflow execution logs on <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">GitHub Actions Run #${{ github.run_number }}</a>.</p>
