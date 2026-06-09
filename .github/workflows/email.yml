@@ -3,53 +3,72 @@ name: test-email
 on:
   push:
     branches:
-    - main  
+      - main
 
   workflow_dispatch:
-  
-jobs:
-  build:  
 
+jobs:
+  build:
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v4
 
-      - name : Login to docker hub
+      - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      
-      - name: Build docker image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/portfolio:latest .
 
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKER_USERNAME }}/portfolio:latest \
+            .
 
-      - name : push docker image to docker hub
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/portfolio:latest
+      - name: Push Docker Image
+        run: |
+          docker push \
+            ${{ secrets.DOCKER_USERNAME }}/portfolio:latest
 
   send-email-notification:
     name: Notify Stakeholders via Email
+
     runs-on: ubuntu-latest
+
+    # Wait for build job to complete
     needs: build
-    # Ensures this job only triggers if the 'deploy' job completes successfully
-    if: success() 
+
+    # Run even if build fails or gets cancelled
+    if: always()
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Required to fetch git log details
+          fetch-depth: 0
 
-      - name: Extract Commit and Merge Details
-        id: vars
+      - name: Determine Build Status
         run: |
-          # Capture the latest commit message (which contains the merge PR details)
+          if [ "${{ needs.build.result }}" = "success" ]; then
+            echo "STATUS=SUCCESS" >> $GITHUB_ENV
+            echo "ICON=✅" >> $GITHUB_ENV
+
+          elif [ "${{ needs.build.result }}" = "cancelled" ]; then
+            echo "STATUS=CANCELLED" >> $GITHUB_ENV
+            echo "ICON=🚫" >> $GITHUB_ENV
+
+          else
+            echo "STATUS=FAILED" >> $GITHUB_ENV
+            echo "ICON=❌" >> $GITHUB_ENV
+          fi
+
+      - name: Extract Commit Details
+        run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
-          
-          # Clean text formatting for the multi-line env variable string
+
           echo "MERGE_DETAILS<<EOF" >> $GITHUB_ENV
           echo "$COMMIT_MSG" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
@@ -57,33 +76,46 @@ jobs:
       - name: Send Email
         uses: dawidd6/action-send-mail@v3
         with:
-          # SMTP Server Configuration (Example uses Gmail)
           server_address: smtp.gmail.com
           server_port: 465
           secure: true
+
           username: ${{ secrets.SMTP_USERNAME }}
           password: ${{ secrets.SMTP_PASSWORD }}
-          
-          # Email Metadata
-          subject: "🚀 Deployment Success: ${{ github.repository }} successfully updated!"
-          to: team-leads@example.com, stakeholder@example.com
+
+          subject: "${{ env.ICON }} Build ${{ env.STATUS }} - ${{ github.repository }}"
+
+          to: ${{ secrets.EMAIL_TO }}
+
           from: GitHub Actions CI/CD <${{ secrets.SMTP_USERNAME }}>
-          
-          # Email Contents (Markdown to HTML format conversion)
+
           html_body: |
-            <h2>Deployment Action Completed Successfully!</h2>
-            <p>The continuous deployment pipeline has successfully finished running.</p>
-            
-            <h3>📦 What Was Deployed:</h3>
+            <h2>${{ env.ICON }} Build ${{
+            env.STATUS }}</h2>
+
+            <p>
+              The GitHub Actions workflow has completed.
+            </p>
+
+            <h3>📦 Build Details</h3>
+
             <ul>
               <li><strong>Repository:</strong> ${{ github.repository }}</li>
-              <li><strong>Branch/Ref:</strong> <code>${{ github.ref_name }}</code></li>
-              <li><strong>Target Environment:</strong> Production</li>
+              <li><strong>Branch:</strong> ${{ github.ref_name }}</li>
               <li><strong>Triggered By:</strong> ${{ github.actor }}</li>
+              <li><strong>Workflow:</strong> ${{ github.workflow }}</li>
+              <li><strong>Build Result:</strong> ${{ needs.build.result }}</li>
+              <li><strong>Commit SHA:</strong> ${{ github.sha }}</li>
             </ul>
-            
-            <h3>🔀 What Was Merged (Latest Commit Info):</h3>
+
+            <h3>🔀 Latest Commit Details</h3>
+
             <pre>${{ env.MERGE_DETAILS }}</pre>
-            
-            <br>
-            <p>👉 View the complete workflow execution logs on <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">GitHub Actions Run #${{ github.run_number }}</a>.</p>
+
+            <h3>🔗 Workflow Logs</h3>
+
+            <p>
+              <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">
+                View GitHub Actions Run #${{ github.run_number }}
+              </a>
+            </p>
